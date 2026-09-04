@@ -2311,21 +2311,20 @@ img{-webkit-user-drag:none;user-select:none;}
   // + fade-out exit animation has actually finished playing.
   var SNACKBAR_EXIT_MS = 200;
 
-  // Fix A: BOTH snackbar kinds auto-dismiss on their own after 4s if the
-  // user doesn't interact with them, reusing the exact same slide-down+
-  // fade-out exit path as a manual dismiss (dismissSnackbar()/
-  // undoCarriedFilter(), which both just route back through this same
-  // function's (!desired) branch below):
-  //  - the hint/suggestion snackbar ("<filter> filter available" + Apply +
-  //    close-X, kind:'suggest', renders with the .positive/green class);
-  //  - the auto-applied-on-entry snackbar ("<filter> filter applied" +
-  //    Undo, kind:'applied', renders with the .warning/yellow class — this
-  //    is the one the user actually means by "the yellow snackbar", and
-  //    the one this fix adds the behavior to; a prior pass had only wired
-  //    it up for 'suggest').
-  // Tapping Undo (on 'applied') or Apply/the close-X (on 'suggest') still
-  // correctly cancels the pending timer: both actions replace state.stores
-  // [id].snackbar (with a filters set, or null) before calling
+  // Fix A: the auto-applied-on-entry snackbar ("<filter> filter applied" +
+  // Undo, kind:'applied', renders with the .warning/yellow class — this is
+  // the one the user actually means by "the yellow snackbar") auto-
+  // dismisses on its own after 4s if the user doesn't interact with it,
+  // reusing the exact same slide-down+fade-out exit path as a manual
+  // dismiss (undoCarriedFilter(), which just routes back through this same
+  // function's (!desired) branch below).
+  // The hint/suggestion snackbar ("<filter> filter available" + Apply +
+  // close-X, kind:'suggest', renders with the .positive/green class) does
+  // NOT auto-dismiss — it stays on screen until the user taps Apply or the
+  // close-X. A prior pass had wired the same 4s timer up for 'suggest' too;
+  // this one removes it from that kind only, leaving 'applied' untouched.
+  // Tapping Undo (on 'applied') still correctly cancels the pending timer:
+  // it replaces state.stores[id].snackbar (with null) before calling
   // renderStore()/renderStoreSnackbar() again, so desiredKey no longer
   // matches wrap.dataset.snackbarKey and the "nothing changed" early-return
   // below (the only place that *doesn't* unconditionally clear the timer)
@@ -2334,12 +2333,12 @@ img{-webkit-user-drag:none;user-select:none;}
   // clears it too, via resetSnackbarWrap() (see showScreen() below).
   var SNACKBAR_HINT_AUTODISMISS_MS = 4000;
 
-  // Arms (or re-arms) either snackbar kind's 4s auto-dismiss timer. `key` is
-  // the exact desiredKey the timer was armed for, so the fired callback can
-  // no-op if the snackbar has since changed identity by some path that
-  // didn't go through the clearTimeout calls below (defensive; in normal
-  // operation those clears already cover every manual-dismiss/navigate-away
-  // case).
+  // Arms (or re-arms) the 'applied' snackbar's 4s auto-dismiss timer — never
+  // called for kind:'suggest' (see Fix A note above). `key` is the exact
+  // desiredKey the timer was armed for, so the fired callback can no-op if
+  // the snackbar has since changed identity by some path that didn't go
+  // through the clearTimeout calls below (defensive; in normal operation
+  // those clears already cover every manual-dismiss/navigate-away case).
   function scheduleHintAutoDismiss(wrap, storeId, key){
     wrap._hintAutoDismissTimer = setTimeout(function(){
       wrap._hintAutoDismissTimer = null;
@@ -2396,13 +2395,13 @@ img{-webkit-user-drag:none;user-select:none;}
 
     if (desiredKey === currentKey && !isLeaving){
       // Nothing about the snackbar itself changed, so don't replay its
-      // entrance animation — but if it's either auto-dismissing kind
-      // (Fix A: 'suggest' or 'applied') and its timer isn't currently
-      // running (e.g. it was paused by showScreen() while the user
-      // navigated away from the store screen and this is the same
+      // entrance animation — but if it's the auto-dismissing kind (Fix A:
+      // 'applied' only — 'suggest' never auto-dismisses) and its timer
+      // isn't currently running (e.g. it was paused by showScreen() while
+      // the user navigated away from the store screen and this is the same
       // snackbar on return), arm a fresh one rather than leaving it stuck
       // with no auto-dismiss.
-      if (desired && (desired.kind === 'suggest' || desired.kind === 'applied') && !wrap._hintAutoDismissTimer){
+      if (desired && desired.kind === 'applied' && !wrap._hintAutoDismissTimer){
         scheduleHintAutoDismiss(wrap, storeId, desiredKey);
       }
       return;
@@ -2446,7 +2445,8 @@ img{-webkit-user-drag:none;user-select:none;}
           '<button class="snackbar-action" data-action="apply-suggested-filter">Apply</button>' +
           '<button class="snackbar-close" data-action="dismiss-snackbar">'+ICONS.close+'</button>' +
         '</div>';
-      scheduleHintAutoDismiss(wrap, storeId, desiredKey);
+      // Fix A: 'suggest' does NOT auto-dismiss — it stays visible until the
+      // user taps Apply or the close-X, so no timer is armed here.
     } else {
       wrap.innerHTML =
         '<div class="snackbar warning">' +
@@ -2455,9 +2455,9 @@ img{-webkit-user-drag:none;user-select:none;}
           '<button class="snackbar-undo" data-action="undo-carried-filter">Undo</button>' +
         '</div>';
       // Fix A: the auto-applied "...filter applied" + Undo snackbar
-      // (kind:'applied', the yellow one) now also auto-dismisses after 4s,
-      // reusing the exact same timer/animation mechanism as the 'suggest'
-      // snackbar above.
+      // (kind:'applied', the yellow one) auto-dismisses after 4s — see the
+      // SNACKBAR_HINT_AUTODISMISS_MS doc comment above for why 'suggest'
+      // (the branch just above this one) does not get the same timer.
       scheduleHintAutoDismiss(wrap, storeId, desiredKey);
     }
   }
