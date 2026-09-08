@@ -236,7 +236,7 @@ img{-webkit-user-drag:none;user-select:none;}
    and IconBlob.module.scss's __shape/__icon parts). */
 .snackbar-icon{ flex:none; width:24px; height:24px; position:relative; display:flex; align-items:center; justify-content:center; }
 .snackbar-icon .icon-blob-shape{ position:absolute; inset:0; width:100%; height:100%; display:block; }
-.snackbar-icon svg{ position:relative; z-index:1; }
+.snackbar-icon svg{ position:relative; z-index:1; width:18px; height:18px; }
 .snackbar-text{ flex:1; font-size:14px; line-height:18px; font-weight:400; color:#161617; }
 .snackbar-text b{ font-weight:700; }
 .snackbar-action{
@@ -2431,16 +2431,18 @@ img{-webkit-user-drag:none;user-select:none;}
     wrap.dataset.snackbarKey = desiredKey;
     delete wrap.dataset.leaving;
     var names = formatFilterNameList(Array.from(desired.filters).map(function(id){ return FILTER_LABEL[id]; }));
-    // Leading icon-blob: black sparkle glyph (ICONS.sparkle) layered over a
-    // color-matched blob shape — green for the hint/suggest snackbar
-    // (matches .snackbar.positive's background), yellow for the applied/
-    // carried-over snackbar (matches .snackbar.warning's background). See
-    // the .snackbar-icon rules above and the Figma tokens noted next to
-    // ASSET.iconBlobPositive/iconBlobWarning.
+    // Leading icon-blob: black sliders/filter glyph (ICONS.sliders — same
+    // glyph used elsewhere for filter affordances, e.g. the store header's
+    // filter nav button) layered over a color-matched blob shape — green
+    // for the hint/suggest snackbar (matches .snackbar.positive's
+    // background), yellow for the applied/carried-over snackbar (matches
+    // .snackbar.warning's background). See the .snackbar-icon rules above
+    // and the Figma tokens noted next to ASSET.iconBlobPositive/
+    // iconBlobWarning.
     if (desired.kind === 'suggest'){
       wrap.innerHTML =
         '<div class="snackbar positive">' +
-          '<span class="snackbar-icon"><img class="icon-blob-shape" src="'+ASSET.iconBlobPositive+'" alt="" />'+ICONS.sparkle+'</span>' +
+          '<span class="snackbar-icon"><img class="icon-blob-shape" src="'+ASSET.iconBlobPositive+'" alt="" />'+ICONS.sliders+'</span>' +
           '<span class="snackbar-text">'+names+' filter available</span>' +
           '<button class="snackbar-action" data-action="apply-suggested-filter">Apply</button>' +
           '<button class="snackbar-close" data-action="dismiss-snackbar">'+ICONS.close+'</button>' +
@@ -2450,7 +2452,7 @@ img{-webkit-user-drag:none;user-select:none;}
     } else {
       wrap.innerHTML =
         '<div class="snackbar warning">' +
-          '<span class="snackbar-icon"><img class="icon-blob-shape" src="'+ASSET.iconBlobWarning+'" alt="" />'+ICONS.sparkle+'</span>' +
+          '<span class="snackbar-icon"><img class="icon-blob-shape" src="'+ASSET.iconBlobWarning+'" alt="" />'+ICONS.sliders+'</span>' +
           '<span class="snackbar-text">'+names+' filter applied</span>' +
           '<button class="snackbar-undo" data-action="undo-carried-filter">Undo</button>' +
         '</div>';
