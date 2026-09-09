@@ -1681,18 +1681,44 @@ img{-webkit-user-drag:none;user-select:none;}
       layers:[ {img:'ftBurgersIcon', inset:[17,17,17,17]} ] },
     { id:'asian', label:'Asian', interactive:true,
       layers:[ {img:'asian', inset:[13.15,11.3,14.31,10.6]} ] },
+    // Fix (wall-carousel illustration sizing pass): ftSushiIcon/
+    // ftMexicanIcon/ftItalianIcon/vegan are all landscape source assets
+    // (real pixel/viewBox ratios ~1.06-1.27, wider than tall) reused
+    // verbatim from FOODTYPE_OPTIONS/FILTERS. Their insets alone don't
+    // control the rendered box size the way the carousel's original 4
+    // chips' insets do: with only `inset` set on an <img> (no explicit
+    // width/height), a PNG-backed icon's rendered box falls back to (box
+    // width from the L/R percentages * its own naturalHeight/naturalWidth)
+    // — silently ignoring the T/B numbers — while an SVG-backed icon with
+    // explicit width/height attributes (vegan) ignores `inset` altogether
+    // and renders at its raw intrinsic size. Both are invisible for the
+    // carousel's original chips (Promotions/Asian/Vegetarian/Gluten free)
+    // only because those insets were computed straight from each real
+    // Figma layer's own bounding box, so they're already self-consistent
+    // with that asset's own ratio — but it makes these 4 reused, landscape
+    // assets render visibly SHORTER than ftBurgersIcon (~151x150, already
+    // near-square so unaffected) and the rest of the row. Confirmed with a
+    // headless-Chromium pixel measurement of the actual rendered chips.
+    // Fixed by pairing new carousel-only insets (below) with
+    // insetStyleCarousel() (see its doc comment above insetStyle()), which
+    // additionally pins explicit width/height derived from the same 4
+    // numbers so the rendered box always matches the declared inset,
+    // regardless of the underlying asset's own intrinsic sizing behavior —
+    // scoped to renderWallCarousel() only, so FOODTYPE_OPTIONS' and
+    // FILTERS' own insets/rendering (and every other surface reusing these
+    // ASSET entries) are untouched.
     { id:'sushi', label:'Sushi', interactive:true,
-      layers:[ {img:'ftSushiIcon', inset:[17,17,17,17]} ] },
+      layers:[ {img:'ftSushiIcon', inset:[18.5,16.5,18.5,16.5]} ] },
     { id:'vegetarian', label:'Vegetarian', interactive:true,
       layers:[ {img:'salad', inset:[12.06,32.64,44.51,11.94]}, {img:'avocadoToast', inset:[36.96,12.71,12.91,27.62]} ] },
     { id:'glutenfree', label:'Gluten free', interactive:true,
       layers:[ {img:'glutenFree', inset:[16.7,17.84,16.69,17.84]} ] },
     { id:'mexican', label:'Mexican', interactive:true,
-      layers:[ {img:'ftMexicanIcon', inset:[17,17,17,17]} ] },
+      layers:[ {img:'ftMexicanIcon', inset:[18.5,15.5,18.5,15.5]} ] },
     { id:'italian', label:'Italian', interactive:true,
-      layers:[ {img:'ftItalianIcon', inset:[17,17,17,17]} ] },
+      layers:[ {img:'ftItalianIcon', inset:[18.5,11,18.5,11]} ] },
     { id:'vegan', label:'Vegan', interactive:true,
-      layers:[ {img:'vegan', inset:[16.83,10.74,22.66,11.64]} ] }
+      layers:[ {img:'vegan', inset:[18.5,9,18.5,9]} ] }
   ];
 
   /* ============================= MENU DATA ============================= */
@@ -1894,7 +1920,7 @@ img{-webkit-user-drag:none;user-select:none;}
     row.innerHTML = WALL_CAROUSEL.map(function(f){
       var selected = f.interactive && state.wallFilters.has(f.id);
       var layers = f.layers.map(function(l){
-        return '<img class="art" src="'+ASSET[l.img]+'" style="'+insetStyle(l.inset)+'" />';
+        return '<img class="art" src="'+ASSET[l.img]+'" style="'+insetStyleCarousel(l.inset)+'" />';
       }).join('');
       var attrs = f.interactive ? ' data-action="toggle-wall-filter" data-filter-id="'+f.id+'"' : '';
       var cls = 'bubble' + (f.interactive ? ' interactive' : '') + (selected ? ' selected' : '');
@@ -2341,7 +2367,8 @@ img{-webkit-user-drag:none;user-select:none;}
   // dismiss (undoCarriedFilter(), which just routes back through this same
   // function's (!desired) branch below).
   // The hint/suggestion snackbar ("<filter> filter available" + Apply +
-  // close-X, kind:'suggest', renders with the .positive/green class) does
+  // close-X, kind:'suggest', renders with the same .warning/yellow class as
+  // 'applied' — see the .snackbar rules above) does
   // NOT auto-dismiss — it stays on screen until the user taps Apply or the
   // close-X. A prior pass had wired the same 4s timer up for 'suggest' too;
   // this one removes it from that kind only, leaving 'applied' untouched.
@@ -2455,16 +2482,17 @@ img{-webkit-user-drag:none;user-select:none;}
     var names = formatFilterNameList(Array.from(desired.filters).map(function(id){ return FILTER_LABEL[id]; }));
     // Leading icon-blob: black sliders/filter glyph (ICONS.sliders — same
     // glyph used elsewhere for filter affordances, e.g. the store header's
-    // filter nav button) layered over a color-matched blob shape — green
-    // for the hint/suggest snackbar (matches .snackbar.positive's
-    // background), yellow for the applied/carried-over snackbar (matches
-    // .snackbar.warning's background). See the .snackbar-icon rules above
-    // and the Figma tokens noted next to ASSET.iconBlobPositive/
-    // iconBlobWarning.
+    // filter nav button) layered over a color-matched blob shape. Both the
+    // hint/suggest snackbar and the applied/carried-over snackbar use the
+    // same yellow .snackbar.warning background + ASSET.iconBlobWarning blob
+    // (the hint snackbar previously used the green .positive/iconBlobPositive
+    // styling; that was changed to match applied's color). See the
+    // .snackbar-icon rules above and the Figma tokens noted next to
+    // ASSET.iconBlobPositive/iconBlobWarning.
     if (desired.kind === 'suggest'){
       wrap.innerHTML =
-        '<div class="snackbar positive">' +
-          '<span class="snackbar-icon"><img class="icon-blob-shape" src="'+ASSET.iconBlobPositive+'" alt="" />'+ICONS.sliders+'</span>' +
+        '<div class="snackbar warning">' +
+          '<span class="snackbar-icon"><img class="icon-blob-shape" src="'+ASSET.iconBlobWarning+'" alt="" />'+ICONS.sliders+'</span>' +
           '<span class="snackbar-text">'+names+' filter available</span>' +
           '<button class="snackbar-action" data-action="apply-suggested-filter">Apply</button>' +
           '<button class="snackbar-close" data-action="dismiss-snackbar">'+ICONS.close+'</button>' +
@@ -2883,6 +2911,41 @@ img{-webkit-user-drag:none;user-select:none;}
   /* ============================= MODAL ============================= */
   function insetStyle(inset){
     return 'inset:'+inset[0]+'% '+inset[1]+'% '+inset[2]+'% '+inset[3]+'%;';
+  }
+  // Wall-carousel-only variant of insetStyle(): also pins explicit
+  // width/height (derived from the same 4 inset numbers) instead of
+  // leaving them to the browser's default replaced-element auto-sizing.
+  // Root cause this works around: with only `inset` set (no width/height)
+  // on an absolutely-positioned <img>, an over-constrained box's actual
+  // rendered size falls back to the *source asset's own* intrinsic
+  // sizing info instead of purely honoring the 4 declared percentages —
+  // confirmed two different ways in this file's assets: a PNG-backed icon
+  // (e.g. ftSushiIcon/ftMexicanIcon/ftItalianIcon, real pixel dimensions
+  // like 159x150) renders at a HEIGHT derived from (box width from L/R *
+  // its own naturalHeight/naturalWidth), silently ignoring the top/bottom
+  // numbers; an SVG-backed icon with explicit width/height attributes
+  // (e.g. `vegan`, ASSET.vegan) renders at its raw intrinsic CSS size
+  // (~56x44) and ignores inset entirely, regardless of any of the 4
+  // percentages. Both behaviors are invisible for the wall carousel's 4
+  // original chips (Promotions/Asian/Vegetarian/Gluten free) only because
+  // their per-side insets happen to already be self-consistent with their
+  // own asset's real aspect ratio (extracted straight from each's real
+  // Figma layer position/size) — but they silently break for any reused
+  // asset whose insets weren't computed against that same asset's own
+  // ratio (ftBurgersIcon/ftSushiIcon/ftMexicanIcon/ftItalianIcon/vegan,
+  // reused verbatim from FOODTYPE_OPTIONS/FILTERS — see WALL_CAROUSEL's own
+  // doc comment above). Explicitly setting width/height here makes the
+  // rendered box match the declared inset numbers exactly, for every
+  // asset type, and lets .filter-illustration .art's existing
+  // object-fit:contain do real letterboxing instead of being a no-op.
+  // Scoped to renderWallCarousel() only (see below) — insetStyle() itself,
+  // and every other caller (renderFiltersGrid(), the Food type modal grid),
+  // is untouched, so this cannot affect how these same ASSET entries render
+  // anywhere else in the file.
+  function insetStyleCarousel(inset){
+    var t=inset[0], r=inset[1], b=inset[2], l=inset[3];
+    var w = 100-l-r, h = 100-t-b;
+    return 'inset:'+t+'% '+r+'% '+b+'% '+l+'%; width:'+w+'%; height:'+h+'%;';
   }
   // Derives which FILTERS entries are actually offered in a given modal
   // context, instead of hardcoding per-store exceptions: a filter only
